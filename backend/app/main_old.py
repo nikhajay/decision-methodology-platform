@@ -83,3 +83,59 @@ def analyze_baseline(payload: BaselineInput):
 @app.get("/api/history")
 def history():
     return _HISTORY
+
+
+
+
+import re 
+import html 
+import urllib.request 
+
+def print_secret_message(url: str) -> None: 
+    """Fetch Google Doc data and print the secret message grid.""" 
+    # Fetch document 
+    with urllib.request.urlopen(url) as response: 
+        content = response.read().decode("utf-8") 
+
+    # Decode HTML entities such as &#9608; 
+    content = html.unescape(content) 
+
+    # Remove HTML tags 
+    text = re.sub(r"<[^>]+>", "\n", content) 
+
+    points = {} 
+    max_x = max_y = 0 
+
+    # Look for rows containing: 
+    # x-coordinate, character, y-coordinate 
+    for line in text.splitlines(): 
+        line = " ".join(line.split()) 
+
+        # Find three fields separated by whitespace 
+        match = re.match(r"^(\d+)\s+(.+?)\s+(\d+)$", line) 
+        if not match: 
+            continue
+
+            x = int(match.group(1)) 
+            character = match.group(2) 
+            y = int(match.group(3)) 
+
+            points[(x, y)] = character 
+            max_x = max(max_x, x) 
+            max_y = max(max_y, y) 
+
+        # Print top -> bottom because y=0 is the bottom. 
+        for y in range(max_y, -1, -1): 
+            
+            print( 
+                "".join( 
+                    points.get((x, y), " ") 
+                    for x in range(max_x + 1) 
+                    ).rstrip() 
+                ) 
+            
+            if __name__ == "__main__": 
+                print_secret_message( 
+                    "https://docs.google.com/document/d/e/" 
+                    "2PACX-1vTMOmshQe8YvaRXi6gEPKKlsC6UpFJSMAk4mQjLm_u1gmHdVVTaeh7nBNFBRlui0sTZ-snGwZM4DBCT/pub" 
+                )

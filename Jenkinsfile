@@ -1,65 +1,100 @@
-
 pipeline {
+
     agent any
 
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+    }
+
     environment {
-        IMAGE_NAME = 'fastapi-cicd'
-        CONTAINER_NAME = 'fastapi-app'
+        DEPLOY_DIR = '/opt/decision-methodology'
+        COMPOSE_PROJECT_NAME = 'decision-methodology'
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Install & Test') {
+        stage('Backend Tests') {
             steps {
-                sh '''
-                    python3 -m venv .venv
-                    .venv/bin/python -m pip install -r requirements.txt
-                    .venv/bin/python -m pytest -q
-                '''
+                dir('backend') {
+                    sh '''
+                        docker run --rm \
+                          -v "$PWD:/app" \
+                          -w /app \
+                          python:3.12-slim \
+                          sh -c "
+                            pip install -r requirements-dev.txt &&
+                            python -m pytest tests/ -v
+                          "
+                    '''
+                }
             }
         }
 
-        stage('Docker Build') {
+        stage('Frontend Build Test') {
+            steps {
+                dir('frontend') {
+                    sh '''
+                        docker run --rm \
+                          -v "$PWD:/app" \
+                          -w /app \
+                          node:22-alpine \
+                          sh -c "
+                            npm ci &&
+                            npm run build
+                          "
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
             steps {
                 sh '''
-                    docker build \
-                      -t $IMAGE_NAME:$BUILD_NUMBER \
-                      .
+                    docker compose \
+                      --env-file "$DEPLOY_DIR/.env" \
+                      build backend frontend
                 '''
             }
         }
 
         stage('Deploy') {
+            when {
+                branch 'main'
+            }
+
             steps {
                 sh '''
-                    docker rm -f $CONTAINER_NAME || true
-
-                    docker run -d \
-                      --name $CONTAINER_NAME \
-                      --restart unless-stopped \
-                      -p 8000:8000 \
-                      $IMAGE_NAME:$BUILD_NUMBER
+                    docker compose \
+                      --env-file "$DEPLOY_DIR/.env" \
+                      up -d --no-build --remove-orphans
                 '''
             }
         }
 
         stage('Health Check') {
+            when {
+                branch 'main'
+            }
+
             steps {
                 sh '''
-                    for i in $(seq 1 20); do
-                        if curl -fsS \
-                          http://localhost:8000/health; then
-                            exit 0
-                        fi
-                        sleep 2
+                    for i in $(seq 1 15); do
+                      if curl -fsS \
+                        http://localhost:8081/api/health; then
+                        exit 0
+                      fi
+
+                      sleep 3
                     done
 
-                    docker logs $CONTAINER_NAME
                     exit 1
                 '''
             }
@@ -68,11 +103,11 @@ pipeline {
 
     post {
         success {
-            echo 'CI/CD Pipeline Successful!'
+            echo 'CI/CD pipeline successful'
         }
 
         failure {
-            echo 'CI/CD Pipeline Failed!'
+            echo 'CI/CD pipeline failed'
         }
     }
 }
