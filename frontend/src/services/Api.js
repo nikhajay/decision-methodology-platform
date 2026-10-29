@@ -1,6 +1,8 @@
 import config from "../config/configs"
 const BASE = "/api";
-//console.log(config.authToken)
+//console.log("testing ")
+//console.log(config)
+
 // The current session's JWT lives here (module-level, set once by App.jsx
 // right after login / on restoring a saved session) so every call below
 // can attach it without threading a token prop through every component.
@@ -48,6 +50,15 @@ async function request(path, { method = "GET", body } = {}) {
 
 export function login(username, password) {
   return request("/auth/login", { method: "POST", body: { username, password } });
+}
+
+export function userRegistration(form) {
+  return request("/users/user-registration", 
+    { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: form
+    });
 }
 
 export function fetchMe() {

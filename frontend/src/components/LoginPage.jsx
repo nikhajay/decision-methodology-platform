@@ -45,6 +45,8 @@ export default function LoginPage({ onLoggedIn }) {
     }
   };
 
+  
+
   return (
     <div className="login-shell">
       <form className="card login-card" onSubmit={handleSubmit}>
@@ -77,10 +79,14 @@ export default function LoginPage({ onLoggedIn }) {
         </label>
 
         {error && <div className="card error-card login-error">{error}</div>}
-
-        <button className="btn-primary" type="submit" disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
+        <div class="button-group">
+          <button className="btn-primary" type="submit" disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+          <button className="btn-primary" type="button" disabled={loading}>
+            {loading ? "Signing Up…" : "Sign Up"}
+          </button>
+        </div>
 
         <p className="muted demo-hint">
           Demo password for every role: <code>Demo@123</code>

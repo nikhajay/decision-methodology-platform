@@ -88,12 +88,18 @@ cd /var/www/html/methodology-decision-platform/backend
 python3 -m venv venv
 source venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install fastapi uvicorn sqlalchemy
+python -m pip install fastapi uvicorn sqlalchemy psycopg2-binary python-dotenv alembic pydantic pydantic-settings python-dotenv pwdlib[argon2] pydantic[email] reportlab
+
+
 if using postgresql
 python -m pip install "psycopg[binary]"
 
 if using postgresql
 python -m pip install pymysql
+
+
+
+pip install python-dotenv
 
 python -m uvicorn app.main:app --reload
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000

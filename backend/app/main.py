@@ -29,6 +29,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from app.db.database import get_db
 
 from calculations import analyze
 from change_analysis import analyze_change_request
@@ -54,6 +56,8 @@ from projects import (
     delete_project,
 )
 
+from app.routers.user import router as user_router
+
 app = FastAPI(
     title="SDLC Model Advisor API",
     description=(
@@ -78,6 +82,8 @@ app.add_middleware(
 def _on_startup():
     seed_demo_projects()
 
+
+app.include_router(user_router)
 
 # --------------------------------------------------------------------------- #
 # Schemas (baseline / change-request — unchanged shape from before)
@@ -148,8 +154,9 @@ def health():
 # --------------------------------------------------------------------------- #
 
 @app.post("/api/auth/login", response_model=TokenResponse)
-def login(payload: LoginRequest):
-    user = authenticate(payload.username, payload.password)
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = authenticate(payload.username, payload.password, db)
+    print(user)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token(user)
@@ -293,3 +300,4 @@ def remove_project(project_id: int, current_user: UserOut = Depends(get_current_
     if not delete_project(project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     return {"deleted": True}
+

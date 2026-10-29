@@ -29,6 +29,9 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.models.users import User
+from app.core.hash_security import hash_password, verify_password
 
 # --------------------------------------------------------------------------- #
 # Roles
@@ -50,15 +53,17 @@ ROLES = [
 
 _SALT = "sdlc-advisor-demo-salt"  # a fixed demo salt; use a per-user random salt in production
 
-
+"""
 def hash_password(password: str) -> str:
     return hashlib.sha256((_SALT + password).encode("utf-8")).hexdigest()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    print(hash_password(password))
+    print(password_hash)
     return hmac.compare_digest(hash_password(password), password_hash)
 
-
+"""
 # --------------------------------------------------------------------------- #
 # Seed demo users — one per role, same demo password (see README to change)
 # --------------------------------------------------------------------------- #
@@ -76,6 +81,8 @@ _USERS = {
 }
 
 ROLE_TO_USERNAME = {u["role"]: uname for uname, u in _USERS.items()}
+
+
 
 # --------------------------------------------------------------------------- #
 # JWT
@@ -105,11 +112,21 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
-def authenticate(username: str, password: str) -> Optional[UserOut]:
-    record = _USERS.get(username.strip().lower())
-    if not record or not verify_password(password, record["password_hash"]):
+def authenticate(username: str, password: str,  db: Session) -> Optional[UserOut]:
+    
+    
+    existing_user = (
+        db.query(User)
+        .filter(User.email == username)
+        .first()
+    )
+    ##print(existing_user.email)
+    ##pass
+    ##record = _USERS.get(username.strip().lower())
+    if not existing_user or not verify_password(password, existing_user.password):
         return None
-    return UserOut(username=username.strip().lower(), name=record["name"], role=record["role"])
+    return UserOut(username=existing_user.email, name=existing_user.name, role=existing_user.role)
+    
 
 
 def create_access_token(user: UserOut) -> str:

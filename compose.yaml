@@ -1,0 +1,66 @@
+name: decision-methodology
+
+services:
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ./backend
+
+    image: decision-backend:local
+    restart: unless-stopped
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+
+    image: decision-frontend:local
+    restart: unless-stopped
+
+    ports:
+      - "8081:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge
